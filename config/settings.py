@@ -23,4 +23,6 @@ INITIAL_PROBABILITY = 1
 PROBABILITY_INCREMENT = 10
 
 # Añade esta línea al final del archivo
-OLLAMA_URL = "http://localhost:11434"  # URL por defecto de Ollama
+#OLLAMA_URL = "http://localhost:11434"  # URL por defecto de Ollama
+
+GEMINI_API_KEY = "AIzaSyAvK3D-dt0XThj5_EQ7rtzpajq65Lt4u-0"

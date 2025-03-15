@@ -1,6 +1,7 @@
 import random
 from .card import NumberCard, SkillCard
 from .roulette import Roulette
+import logging
 
 class Player:
     """Representa a un jugador en el juego."""
@@ -215,11 +216,27 @@ class Game:
         Returns:
             dict: Información sobre la decisión tomada
         """
-        # Versión simple que no depende de Ollama
+        logging.info("Solicitando decisión a la IA después de perder")
         
+        # Si estamos usando una IA externa (que no está implementada aquí),
+        # podríamos prepararle un estado de juego simplificado
+        game_state = {
+            "hand": self.ai_player.hand,
+            "opponent_last_card": self.player.played_card.value if self.player.played_card else None,
+            "roulette_probability": self.roulette.get_probability(),
+            "turn_count": self.turn_count,
+            "skill_used": self.skill_used_this_turn
+        }
+        
+        logging.info(f"Estado del juego preparado para la IA: {game_state}")
+        
+        # Versión simple que no depende de la IA externa
         # Buscar cartas de habilidad disponibles
         ai_skill_cards = [i for i, card in enumerate(self.ai_player.hand) 
                         if card.type == "skill"]
+        
+        logging.info(f"Cartas de habilidad disponibles: {ai_skill_cards}")
+        logging.info(f"Probabilidad actual de la ruleta: {self.roulette.get_probability()}%")
         
         # Decisión simple basada en la probabilidad de la ruleta
         # Si la probabilidad es alta, preferimos usar una habilidad (si hay disponible)
@@ -227,6 +244,8 @@ class Game:
             # Usar una carta de habilidad aleatoria
             skill_index = random.choice(ai_skill_cards)
             skill_card = self.ai_player.hand[skill_index]
+            
+            logging.info(f"La IA decide usar la habilidad {skill_card.name} (índice {skill_index})")
             
             # Guardar el perdedor original para verificar si cambia
             original_loser = self.current_loser
@@ -237,6 +256,8 @@ class Game:
             # Verificar si el perdedor cambió
             loser_changed = original_loser != self.current_loser
             
+            logging.info(f"Resultado de usar la habilidad: {result}, cambio de perdedor: {loser_changed}")
+            
             return {
                 "choice": "skill",
                 "skill_name": skill_card.name,
@@ -245,7 +266,10 @@ class Game:
             }
         else:
             # Girar la ruleta
+            logging.info("La IA decide usar la ruleta")
             result = self.use_roulette(self.ai_player)
+            logging.info(f"Resultado de la ruleta: {'muerte' if result else 'supervivencia'}")
+            
             return {
                 "choice": "roulette",
                 "died": result

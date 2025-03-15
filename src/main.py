@@ -5,15 +5,15 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import pygame
 from game.game_logic import Game
 from ui.screens import GameScreen
-from ai.ai_player import AIPlayerWithOllama  # Cambiado de AIPlayerWithGemini a AIPlayerWithOllama
+from ai.gemini_player import AIPlayerWithGemini  # Cambiado a Gemini
 
 def main():
     """Función principal que inicia el juego."""
     # Inicializar el juego
     game = Game()
     
-    # Inicializar la IA con Ollama
-    ai_player = AIPlayerWithOllama(model_name="llama3")  # Puedes cambiar a otro modelo que tengas instalado
+    # Inicializar la IA con Gemini
+    ai_player = AIPlayerWithGemini()  # Usamos Gemini en lugar de Ollama
     ai_player.initialize_conversation()
     
     # Inicializar la interfaz gráfica
