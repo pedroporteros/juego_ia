@@ -28,7 +28,12 @@ Este proyecto es un juego de cartas que incorpora la mecánica de la ruleta rusa
    
 2. Navega al directorio del proyecto:
    ```
-   cd juego-ruleta-rusa
+   cd juego_ia_
+   ```
+
+3. Crea un entrono virtual
+   ```
+   python -m venv {nombre del entorno}
    ```
 
 3. Instala las dependencias:
@@ -46,7 +51,3 @@ python src/main.py
 ## Contribuciones
 
 Las contribuciones son bienvenidas. Si deseas mejorar el juego, por favor abre un issue o envía un pull request.
-
-## Licencia
-
-Este proyecto está bajo la Licencia MIT.
