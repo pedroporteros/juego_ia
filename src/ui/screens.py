@@ -7,6 +7,7 @@ import random
 import logging
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from config.settings import *
+from ui.buttons import Button
 
 logging.basicConfig(
     level=logging.INFO,
@@ -289,21 +290,12 @@ class RouletteVisualizer:
     def draw(self, screen, font):
         """Dibuja la ruleta."""
         # Dibujar círculo exterior
-        pygame.draw.circle(screen, (50, 50, 50), (self.x, self.y), self.radius, 0)
+        pygame.draw.circle(screen, (120, 220, 130), (self.x, self.y), self.radius, 0)
         pygame.draw.circle(screen, (200, 200, 200), (self.x, self.y), self.radius, 3)
         
         # Dibujar segmentos según la probabilidad con colores más suaves
         danger_angle = 360 * (self.probability / 100)
         safe_angle = 360 - danger_angle
-        
-        # Segmento seguro (verde suave)
-        if safe_angle > 0:
-            pygame.draw.arc(screen, (120, 220, 130), 
-                        (self.x - self.radius, self.y - self.radius, 
-                            self.radius * 2, self.radius * 2),
-                        math.radians(self.angle), 
-                        math.radians(self.angle + safe_angle), 
-                        self.radius)
         
         # Segmento peligroso (rosa/rojo suave)
         if danger_angle > 0:
@@ -486,12 +478,24 @@ class GameScreen:
         self.message_effect_text = ""
         self.message_effect_color = (255, 255, 255)
         
+        # Añadir para manejar el scroll en las instrucciones
+        self.instructions_scroll_pos = 0
+        self.instructions_max_scroll = 0  # Se calculará dinámicamente
+        self.instructions_scroll_speed = 15
+        
+        # Modificado: Panel de instrucciones se muestra automáticamente al inicio
+        self.showing_instructions = True
+        self.instructions_button = Button(10, 10, 120, 30, "Instrucciones",
+                                  color=(70,70,200), hover_color=(100,100,240), text_color=WHITE)
+        self.buttons.append(self.instructions_button)
+    
     def show_message_effect(self, text, color=(255, 255, 255)):
         """Muestra un efecto de mensaje grande en pantalla."""
         self.showing_message_effect = True
         self.message_effect_start_time = pygame.time.get_ticks()
         self.message_effect_text = text
         self.message_effect_color = color
+        self.buttons.append(self.instructions_button)
         
     def update(self):
         """Actualiza todos los elementos animados."""
@@ -639,7 +643,8 @@ class GameScreen:
                 pygame.quit()
                 sys.exit()
                 
-            # Verificar clics en cartas
+            pos = pygame.mouse.get_pos()
+            
             for i, card in enumerate(self.player_card_objects):
                 if card.is_clicked(mouse_pos, event):
                     # Deseleccionar todas las cartas
@@ -648,6 +653,24 @@ class GameScreen:
                     # Seleccionar la carta clicada
                     card.selected = True
                     self.selected_card_index = i
+
+            if self.showing_instructions and event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 4:   # rueda arriba
+                    self.instructions_scroll_pos = max(
+                        0, self.instructions_scroll_pos - self.instructions_scroll_speed
+                    )
+                elif event.button == 5: # rueda abajo
+                    self.instructions_scroll_pos = min(
+                        self.instructions_max_scroll,
+                        self.instructions_scroll_pos + self.instructions_scroll_speed
+                    )
+
+            if self.instructions_button.is_clicked(pos, event):
+                self.showing_instructions = True
+
+            if self.showing_instructions and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if hasattr(self, 'close_btn') and self.close_btn.collidepoint(pos):
+                    self.showing_instructions = False
             
             # Verificar clics en botones
             if self.play_button.is_clicked(mouse_pos, event) and self.play_button.active:
@@ -972,8 +995,123 @@ class GameScreen:
             else:
                 self.showing_message_effect = False
         
-        # Actualizar pantalla
+         # Dibujar botón de instrucciones
+        self.instructions_button.draw(self.screen, pygame.font.SysFont(None, 24))
+
+        if self.showing_instructions:
+            self.draw_instructions_panel()
+
         pygame.display.flip()
+        
+    def draw_instructions_panel(self):
+        """Dibuja el panel de instrucciones del juego con capacidad de scroll."""
+        # Crear un panel semi-transparente
+        panel = pygame.Surface((800, 600), pygame.SRCALPHA)
+        panel.fill((30, 30, 50, 230))
+        panel_pos = (SCREEN_WIDTH//2 - 400, SCREEN_HEIGHT//2 - 300)
+        
+        # Añadir un borde al panel
+        pygame.draw.rect(panel, (200, 200, 200, 150), panel.get_rect(), 3, 15)
+        
+        # Título del panel (fijo, no hace scroll)
+        title_font = pygame.font.SysFont(None, 48)
+        title_text = title_font.render("INSTRUCCIONES DEL JUEGO", True, (255, 255, 255))
+        title_rect = title_text.get_rect(center=(400, 40))
+        panel.blit(title_text, title_rect)
+        
+        # Separador (fijo, no hace scroll)
+        pygame.draw.line(panel, (200, 200, 200, 150), (50, 80), (750, 80), 2)
+        
+        # Crear una superficie para el contenido scrollable
+        content_height = 1200  # Altura estimada del contenido
+        content_surface = pygame.Surface((700, content_height), pygame.SRCALPHA)
+        content_surface.fill((0, 0, 0, 0))  # Transparente
+        
+        # Instrucciones del juego - contenido extenso
+        instructions = [
+            "OBJETIVO: Eliminar al oponente o hacer que se quede sin cartas numéricas.",
+            "",
+            "REGLAS BÁSICAS:",
+            "1. Cada jugador tiene cartas numéricas (1-10) y cartas de habilidad.",
+            "2. En cada turno, ambos jugadores juegan una carta numérica. El valor más alto gana.",
+            "3. El perdedor del turno debe tomar una decisión:",
+            "   - Usar una carta de habilidad para cambiar la situación.",
+            "   - Arriesgarse a girar la ruleta rusa.",
+            "4. La ruleta comienza con 1% de probabilidad de 'muerte' y aumenta un 10% cada turno.",
+            "5. El juego termina cuando un jugador 'muere' en la ruleta o se queda sin cartas numéricas.",
+            "",
+            "CARTAS DE HABILIDAD:",
+            "• Aumento: Aumenta tu número en 3 puntos.",
+            "• Intercambio: Intercambia tu carta con la del oponente.",
+            "• Salvavidas: Te salva automáticamente sin usar la ruleta.",
+            "• Duplicar: Duplica el valor de tu carta numérica.",
+            "",
+            "DINÁMICA DEL JUEGO:",
+            "1. Al inicio de la partida, cada jugador recibe una mano de cartas aleatorias.",
+            "2. En tu turno, selecciona una carta numérica para jugar contra la IA.",
+            "3. El jugador con el valor más alto gana el turno.",
+            "4. El perdedor debe decidir entre usar una carta de habilidad o girar la ruleta.",
+            "5. Las cartas de habilidad pueden cambiar el resultado del turno o evitar la ruleta.",
+            "6. Si eliges girar la ruleta, hay una probabilidad de 'muerte' que aumenta cada turno.",
+            "7. El juego continúa hasta que un jugador muere en la ruleta o se queda sin cartas.",
+            "",
+            "ESTRATEGIA:",
+            "• Guarda tus cartas numéricas altas para momentos críticos.",
+            "• Las cartas de habilidad son valiosas cuando la probabilidad de la ruleta es alta.",
+            "• La IA tomará decisiones basadas en la probabilidad de la ruleta y sus cartas disponibles.",
+            "• No te arriesgues demasiado en los primeros turnos, la ruleta se vuelve más peligrosa.",
+            "",
+            "CONTROLES:",
+            "• Haz clic en una carta para seleccionarla.",
+            "• Usa los botones en la parte inferior para realizar acciones.",
+            "• El botón 'Instrucciones' abre esta ventana de ayuda.",
+            "",
+            "¡Buena suerte y que gane el mejor estratega!"
+        ]
+        
+        font = pygame.font.SysFont(None, 24)
+        # calcular altura total
+        y_acc = 0
+        for line in instructions:
+            surf = font.render(line, True, WHITE)
+            y_acc += surf.get_height() + 5
+        content_height = y_acc
+
+        # crear superficie de contenido
+        content_surface = pygame.Surface((700, content_height), pygame.SRCALPHA)
+        y = 0
+        for line in instructions:
+            surf = font.render(line, True, WHITE)
+            content_surface.blit(surf, (0, y))
+            y += surf.get_height() + 5
+
+        self.instructions_max_scroll = max(0, content_height - 470)
+        self.instructions_scroll_pos = max(0, min(self.instructions_scroll_pos, self.instructions_max_scroll))
+
+        content_rect = pygame.Rect(0, self.instructions_scroll_pos, 700, 470)
+        panel.blit(content_surface.subsurface(content_rect), (50, 100))
+
+        if self.instructions_max_scroll > 0:
+            track_h = 430
+            bar_h = max(50, track_h * (470 / content_height))
+            bar_y = 120 + (track_h - bar_h) * (self.instructions_scroll_pos / self.instructions_max_scroll)
+            pygame.draw.rect(panel, (80,80,80,150), (750,120,10,track_h), 0, 5)
+            pygame.draw.rect(panel, (200,200,200,200), (750, bar_y, 10, bar_h), 0, 5)
+            # flechas encima
+            if self.instructions_scroll_pos>0:
+                pygame.draw.polygon(panel, WHITE, [(755,120),(765,140),(745,140)])
+            if self.instructions_scroll_pos<self.instructions_max_scroll:
+                pygame.draw.polygon(panel, WHITE, [(755,550),(765,530),(745,530)])
+
+        local_close = pygame.Rect(700, 40, 50, 30)
+        pygame.draw.rect(panel, (200,50,50), local_close, 0, 10)
+        pygame.draw.rect(panel, WHITE, local_close, 2, 10)
+        x_surf = font.render("X", True, WHITE)
+        panel.blit(x_surf, x_surf.get_rect(center=local_close.center))
+        # mover a coords de pantalla para colisión
+        self.close_btn = local_close.move(panel_pos)
+
+        self.screen.blit(panel, panel_pos)
     
     def run(self):
         """Bucle principal del juego."""
@@ -991,4 +1129,5 @@ class GameScreen:
             if self.game.is_game_over():
                 winner_name = self.game.winner.name if self.game.winner else "Empate"
                 self.game_message = f"¡Juego terminado! Ganador: {winner_name}"
-                # Aquí podríamos mostrar una pantalla de fin de juego
+                self.show_message_effect("¡Juego Terminado!", (255, 50, 50))
+                self.play_button.set_active(False)
